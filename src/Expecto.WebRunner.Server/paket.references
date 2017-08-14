@@ -1,0 +1,16 @@
+Argu
+Expecto
+Mono.Cecil
+FSharp.Configuration
+FSharp.Core
+FSharpx.Async
+FSharpx.Extras
+FSharp.Control.AsyncSeq
+FSharpx.Collections
+Hopac
+Suave
+Suave.DotLiquid
+Newtonsoft.JSON
+NodaTime
+Http.fs
+FAKE.Lib

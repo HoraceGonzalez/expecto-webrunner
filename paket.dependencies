@@ -1,0 +1,32 @@
+source https://www.nuget.org/api/v2
+framework >= net461
+
+redirects:force
+
+nuget Argu 3.2.0
+nuget Expecto
+nuget Mono.Cecil 0.10.0-beta6
+nuget FSharp.Configuration
+nuget FSharp.Core 4.2.2 redirects: force
+nuget FSharpx.Async
+nuget FSharpx.Extras
+nuget FSharp.Control.AsyncSeq
+nuget FSharpx.Collections
+nuget Hopac
+nuget Suave
+nuget DotLiquid 2.0.64
+nuget Suave.DotLiquid
+nuget Newtonsoft.JSON
+nuget NodaTime 1.3.2
+nuget Http.fs
+nuget FAKE.Lib
+
+git https://github.com/RealtyShares/Hopac.Extras.git nugetsource Packages: /source/
+nuget Hopac.Extras 0.3.1
+
+group Build-Tools
+
+    source https://www.nuget.org/api/v2
+    framework >= net461
+
+    nuget FAKE
