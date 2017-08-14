@@ -7,6 +7,7 @@ FSharpx.Async
 FSharpx.Extras
 FSharp.Control.AsyncSeq
 FSharpx.Collections
+FsPickler
 Hopac
 Suave
 Suave.DotLiquid

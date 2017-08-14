@@ -6,3 +6,4 @@ FSharpx.Extras
 FSharp.Control.AsyncSeq
 FSharpx.Collections
 Suave
+Mono.Cecil
