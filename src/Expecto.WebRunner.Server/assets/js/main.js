@@ -8,9 +8,7 @@ $(function () {
         $main.html(renderTestSet(testSet));
         $('.test .collapse').collapse();
         _self.testIndex = indexTests();
-        $('.test .run').unbind('click').click(function () {
-            alert('click!');
-        });
+        
     });
 
     $runAll.click(function () {
@@ -23,17 +21,26 @@ $(function () {
 
     initCommandChannel('ws://localhost:8082/command');
 
-    //$alert.alert();
-
     function indexTests() {
         var map = {};
         $('.test').each(function () {
             var $this = $(this);
             var testCode = $this.attr('data-test-name');
+            var assemblyPath = $this.attr('data-assembly-path');
+            
             map[testCode] = {
                 $status: $this.find('.status'),
-                $message: $this.find('.message')
+                $message: $this.find('.message'),
+                $run: $this.find('.run')
             };
+            
+            map[testCode].$run.unbind('click').click(function () {
+                doSend({ 
+                    commandName: 'run test',
+                    testCode: testCode,
+                    assemblyPath: assemblyPath
+                 });
+            });
         });
         return map;
     }
@@ -58,9 +65,10 @@ $(function () {
     function renderTestCase(testCase) {
         let testCode = testCase.testCode.replace(/[\W]/gi,'-');
         let headingId = ['heading-',testCode].join('');
+        let assemblyPath = testCase.assemblyPath.replace('"','\"');
         let collapseId = ['collapse-',testCode].join('');
         return [
-            '<div class="test card" data-test-name="',escapeTestName(testCode),'">',
+            '<div class="test card" data-test-name="',escapeTestName(testCode),' data-assembly-path="',assemblyPath,'">',
                 '<div class="card-header" role="tab" id="',headingId,'">',
                     '<h5 class="mb-0">',
                         '<a class="run btn btn-sm btn-primary mr-3" href="#" role="button">Run</a>',
@@ -94,11 +102,48 @@ $(function () {
     }
   
     function onMessage(evt) {
-        console.log('RESPONSE: ' + evt.data);
+        //var message = JSON.parse(evt.data);
+        var message = JSON.parse("{
+            \"updateName\": \"TestPassed\",
+            \"data\": {
+                \"name\": \"Authorization/Implementation/No other permission except All should be loose\",
+                \"duration\": \"00:00:00.0120000\"
+            }
+
+        }");
+        var updateName = message.updateName || '';
+        
+        console.log('RESPONSE: ' + message);
+        if (updateName === 'TestPassed') {
+            var testCode = message.data.name;
+            var test = _self.testIndex[testCode];
+            console.log('test ' + test)
+            test.$status
+                .text('PASSED')
+                .addClass('badge-success')
+                .removeClass('badge-danger')
+                .removeClass('badge-info');
+        } else if (updateName === 'TestFailed') {
+            var testCode = message.data.testCode;
+            var test = _self.testIndex[testCode];
+            test.$status
+                .text('FAILED')
+                .addClass('badge-danger')
+                .removeClass('badge-success')
+                .removeClass('badge-info');
+        } else if (updateName === 'TestStarting') {
+            var testCode = message.data.testCode;
+            var test = _self.testIndex[testCode];
+            test.$status
+                .text('Running')
+                .addClass('badge-info')
+                .removeClass('badge-danger')
+                .removeClass('badge-success');
+        } 
     }
 
     function onError(evt) {
-        console.error('ERROR: ' + evt.data);    
+        console.error('ERROR: ' + evt.data);
     }
   
     function doSend(message) {

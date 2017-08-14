@@ -27,9 +27,12 @@ module Api =
 
     module Models = 
         type Command =
-            { commandName : string }
+            {   commandName : string
+                testCode : string
+                assemblyPath : string }
         type StatusUpdate =
-            { updateName : string }
+            {   updateName : string
+                data : obj }
             
     let discover() =
         let projectDir = "c:/code/realtyshares.new/bizapps/"
@@ -39,6 +42,7 @@ module Api =
     open Suave.Sockets
     open Suave.Sockets.Control
     open Suave.WebSocket
+    open Expecto.WebRunner.TestExecution
 
     let serializeToSocket o (ws:WebSocket) = 
         let msg = 
@@ -53,7 +57,49 @@ module Api =
             |> System.Text.Encoding.UTF8.GetString
         tryDeserialize<'a> json
         
-
+    let inline (=>) a b = a, b :> obj
+    module A = Models
+    let convertExecutionStatusUpdateToApi(e:TestExecution.ExecutionStatusUpdate) = 
+        match e with
+        | TestExecution.ExecutionStatusUpdate.BeforeEach testCode ->
+            { A.updateName = "TestStarting"; A.data = dict ["testCode" => testCode ] }
+        | TestExecution.ExecutionStatusUpdate.BeforeRun source ->
+            { A.updateName = "TestingStarting"; A.data = dict ["source" => source] }
+        | TestExecution.ExecutionStatusUpdate.Exception (name,exn,duration) ->
+            { A.updateName = "TestException"; 
+              A.data = dict [
+                "name" => name 
+                "message" => exn.Message 
+                "duration" => duration.ToString("c") ] }
+        | TestExecution.ExecutionStatusUpdate.Failed(name,message,duration) ->
+            { A.updateName = "TestFailed"; 
+              A.data = dict [
+                "name" => name 
+                "message" => message
+                "duration" => duration.ToString("c") ] }
+        | TestExecution.ExecutionStatusUpdate.Ignored(name,message) ->
+            { A.updateName = "TestIgnored"; 
+              A.data = dict [
+                "name" => name 
+                "message" => message ] }
+        | TestExecution.ExecutionStatusUpdate.Info(message) ->
+            { A.updateName = "TestInfo"; A.data = dict ["message" => message ] }
+        | TestExecution.ExecutionStatusUpdate.Passed(name,duration) ->
+            { A.updateName = "TestPassed"; 
+              A.data = dict [
+                "name" => name
+                "duration" => duration.ToString("c") ] }
+        | TestExecution.ExecutionStatusUpdate.Summary summary->
+            { A.updateName = "TestingComplete"; 
+              A.data = dict [
+                "successful" => summary.successful
+                "duration" => summary.duration.ToString("c")
+                "errors" => summary.errors
+                "failures" => summary.failures
+                "ignores" => summary.ignores
+                "passes" => summary.passes
+                "total" => summary.total ] }
+                
     let command (webSocket : WebSocket) (context: _) =
         let notifier = MailboxProcessor<string>.Start(fun inbox ->
             // Loop that waits for the agent and writes to web socket
@@ -64,21 +110,8 @@ module Api =
                     do! notifyLoop()
                 }
             notifyLoop())
-
-        //// Start this using cancellation token, so that you can stop it later
-        //Async.Start(notifyLoop, cts.Token)
-
+            
         let cts = new System.Threading.CancellationTokenSource()
-        let pinger() =
-            let rec loop() = 
-                async {
-                    let msg = sprintf "the current time is %s" <| DateTime.Now.ToString("h:m:s tt")
-                    printfn "sending: %s" msg
-                    notifier.Post <| msg 
-                    do! Async.Sleep 5000
-                    return! loop()
-                }
-            loop()
 
         socket {
             // if `loop` is set to false, the server will stop receiving messages
@@ -103,14 +136,21 @@ module Api =
                     | Success cmd when cmd.commandName = "run all" ->
                         let assembly = @"C:\code\RealtyShares.New\bizapps\tests\RS.Core.Tests\bin\Debug\RS.Core.Tests.exe"
                         let updateFn status = 
-                            notifier.Post (serialize status)
+                            status
+                            |> convertExecutionStatusUpdateToApi
+                            |> serialize
+                            |> notifier.Post
+                        let update = { A.updateName = "AcceptedCommand"; A.data = dict[]}
                         TestExecution.executeAllTests updateFn (assembly)
                         // the `send` function sends a message back to the client
-                        let update = { Models.StatusUpdate.updateName = "AcceptedCommand" }
+                        do! webSocket |> serializeToSocket update
+                    | Success cmd when cmd.commandName = "run test" ->
+                        // the `send` function sends a message back to the client
+                        let update = { A.updateName = "AcceptedCommand"; A.data = dict["testCode" => cmd.testCode]}
                         do! webSocket |> serializeToSocket update
                     | _ ->
                         // the `send` function sends a message back to the client
-                        let update = { Models.StatusUpdate.updateName = "UnrecognizedCommand" }
+                        let update = { A.updateName = "UnrecognizedCommand"; A.data = dict[]}
                         do! webSocket |> serializeToSocket update
                 | (Close, _, _) ->
                     let emptyResponse = [||] |> ByteSegment
