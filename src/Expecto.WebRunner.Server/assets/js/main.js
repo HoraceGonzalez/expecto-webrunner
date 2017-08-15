@@ -6,13 +6,13 @@ $(function () {
 
     $.get("discover", function(testSet) {
         $main.html(renderTestSet(testSet));
-        $('.test .collapse').collapse();
+        $('#expecto-webrunner .test .collapse').collapse();
         _self.testIndex = indexTests();
         
     });
 
     $runAll.click(function () {
-        $('.test .status')
+        $('#expecto-webrunner .test .status')
             .text('pending')
             .removeClass('hidden')
             .addClass('badge-info');
@@ -23,7 +23,7 @@ $(function () {
 
     function indexTests() {
         var map = {};
-        $('.test').each(function () {
+        $('#expecto-webrunner .test').each(function () {
             var $this = $(this);
             var testCode = $this.attr('data-test-name');
             var assemblyPath = $this.attr('data-assembly-path');
@@ -31,6 +31,9 @@ $(function () {
             map[testCode] = {
                 $status: $this.find('.status'),
                 $message: $this.find('.message'),
+                collapse: function(status) {
+                    $this.find('.message-dropdown').collapse(status)
+                },
                 $run: $this.find('.run')
             };
             
@@ -78,11 +81,51 @@ $(function () {
                         '</a>',
                     '</h5>',
                 '</div>',
-                '<div id="',collapseId,'" class="collapse show" role="tabpanel" aria-labelledby="',headingId,'" data-parent="#accordion">',
+                '<div id="',collapseId,'" class="message-dropdown collapse show" role="tabpanel" aria-labelledby="',headingId,'" data-parent="#accordion">',
                     '<div class="message card-body"></div>',
                 '</div>',
             '</div>'
         ].join('');
+    }
+
+    function updateTestUi(testCode, status, description, duration) {
+        var test = _self.testIndex[testCode];
+        test.$status
+            .text(status)
+            .removeClass('badge-success')
+            .removeClass('badge-danger')
+            .removeClass('badge-info');
+        switch (status.toLowerCase()) {
+            case 'passed': test.$status.addClass('badge-success'); break;
+            case 'failed': test.$status.addClass('badge-danger'); break;
+            case 'pending': test.$status.addClass('badge-info'); break;
+            default: test.$status.addClass('badge-info'); break;
+        }
+    
+        var durationMarkup = duration != null
+            ? ['<p><pre>Duration: ',duration,'</pre></p>'].join('')
+            : '';
+
+        var descriptionMarkup = description != null
+            ? ['<p><pre>',description,'</pre></p>'].join('')
+            : '';
+
+        test.$message.html([
+            durationMarkup,
+            descriptionMarkup
+        ].join(''));
+
+        switch (status.toLowerCase()) {
+            case 'failed': test.collapse('show'); break;
+            default: test.collapse(); break;
+        }
+    }
+
+    function alertAppStatus(message) {
+        var pre = document.createElement("p");
+        pre.style.wordWrap = "break-word";
+        pre.innerHTML = message;
+        output.appendChild(pre);
     }
 
     function initCommandChannel(wsUri) {
@@ -100,45 +143,24 @@ $(function () {
     function onClose(evt) {
         console.log("DISCONNECTED");
     }
-  
+
     function onMessage(evt) {
-        //var message = JSON.parse(evt.data);
         var message = JSON.parse(evt.data);
         var updateName = message.updateName || '';
-        
-        console.log('RESPONSE: ' + message);
-        if (updateName === 'TestPassed') {
-            var testCode = message.data.name;
-            var test = _self.testIndex[testCode];
-            test.$status
-                .text('PASSED')
-                .addClass('badge-success')
-                .removeClass('badge-danger')
-                .removeClass('badge-info');
-            var description = 'Duration: ' + message.data.duration;
-            test.$message.text(description)
-        } else if (updateName === 'TestFailed') {
-            var testCode = message.data.name;
-            var test = _self.testIndex[testCode];
-            test.$status
-                .text('FAILED')
-                .addClass('badge-danger')
-                .removeClass('badge-success')
-                .removeClass('badge-info');
-            var description = [
-                [message.dat.message]
-                ['Duration: ' + message.data.duration]
-            ].join('\n');
-            test.$message.text(description);
-        } else if (updateName === 'TestStarting') {
-            var testCode = message.data.name;
-            var test = _self.testIndex[testCode];
-            test.$status
-                .text('Running')
-                .addClass('badge-info')
-                .removeClass('badge-danger')
-                .removeClass('badge-success');
-        } 
+        console.log('RESPONSE: ')
+        console.log(message);
+
+        switch (updateName.toLowerCase()) {
+            case 'testpassed':
+                updateTestUi(message.data.name, 'PASSED', null, message.data.duration); 
+                break;
+            case 'testfailed': 
+                updateTestUi(message.data.name, 'FAILED', message.data.message, message.data.duration); 
+                break;
+            case 'teststarting': 
+                updateTestUi(message.data.name, 'Pending'); 
+                break;
+        }
     }
 
     function onError(evt) {
@@ -149,12 +171,5 @@ $(function () {
         let json = JSON.stringify(message,null,'\t');
         console.log ('SENT: ' + json);
         websocket.send(json);
-    }
-  
-    function writeToScreen(message) {
-        var pre = document.createElement("p");
-        pre.style.wordWrap = "break-word";
-        pre.innerHTML = message;
-        output.appendChild(pre);
     }
 })

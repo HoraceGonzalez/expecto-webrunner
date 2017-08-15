@@ -62,7 +62,9 @@ module Api =
     let convertExecutionStatusUpdateToApi(e:TestExecution.ExecutionStatusUpdate) = 
         match e with
         | TestExecution.ExecutionStatusUpdate.BeforeEach testCode ->
-            { A.updateName = "TestStarting"; A.data = dict ["testCode" => testCode ] }
+            { A.updateName = "TestStarting" 
+              A.data = dict [
+                "name" => testCode ] }
         | TestExecution.ExecutionStatusUpdate.BeforeRun source ->
             { A.updateName = "TestingStarting"; A.data = dict ["source" => source] }
         | TestExecution.ExecutionStatusUpdate.Exception (name,exn,duration) ->
