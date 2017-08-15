@@ -68,7 +68,7 @@ $(function () {
         let assemblyPath = testCase.assemblyPath.replace('"','\"');
         let collapseId = ['collapse-',testCode].join('');
         return [
-            '<div class="test card" data-test-name="',escapeTestName(testCode),' data-assembly-path="',assemblyPath,'">',
+            '<div class="test card" data-test-name="',escapeTestName(testCase.testCode),'" data-assembly-path="',assemblyPath,'">',
                 '<div class="card-header" role="tab" id="',headingId,'">',
                     '<h5 class="mb-0">',
                         '<a class="run btn btn-sm btn-primary mr-3" href="#" role="button">Run</a>',
@@ -103,36 +103,35 @@ $(function () {
   
     function onMessage(evt) {
         //var message = JSON.parse(evt.data);
-        var message = JSON.parse("{
-            \"updateName\": \"TestPassed\",
-            \"data\": {
-                \"name\": \"Authorization/Implementation/No other permission except All should be loose\",
-                \"duration\": \"00:00:00.0120000\"
-            }
-
-        }");
+        var message = JSON.parse(evt.data);
         var updateName = message.updateName || '';
         
         console.log('RESPONSE: ' + message);
         if (updateName === 'TestPassed') {
             var testCode = message.data.name;
             var test = _self.testIndex[testCode];
-            console.log('test ' + test)
             test.$status
                 .text('PASSED')
                 .addClass('badge-success')
                 .removeClass('badge-danger')
                 .removeClass('badge-info');
+            var description = 'Duration: ' + message.data.duration;
+            test.$message.text(description)
         } else if (updateName === 'TestFailed') {
-            var testCode = message.data.testCode;
+            var testCode = message.data.name;
             var test = _self.testIndex[testCode];
             test.$status
                 .text('FAILED')
                 .addClass('badge-danger')
                 .removeClass('badge-success')
                 .removeClass('badge-info');
+            var description = [
+                [message.dat.message]
+                ['Duration: ' + message.data.duration]
+            ].join('\n');
+            test.$message.text(description);
         } else if (updateName === 'TestStarting') {
-            var testCode = message.data.testCode;
+            var testCode = message.data.name;
             var test = _self.testIndex[testCode];
             test.$status
                 .text('Running')

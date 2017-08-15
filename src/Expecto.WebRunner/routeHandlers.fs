@@ -101,7 +101,7 @@ module Api =
                 "total" => summary.total ] }
                 
     let command (webSocket : WebSocket) (context: _) =
-        let notifier = MailboxProcessor<string>.Start(fun inbox ->
+        let notifier = MailboxProcessor<Models.StatusUpdate>.Start(fun inbox ->
             // Loop that waits for the agent and writes to web socket
             let rec notifyLoop() = 
                 async { 
@@ -138,7 +138,6 @@ module Api =
                         let updateFn status = 
                             status
                             |> convertExecutionStatusUpdateToApi
-                            |> serialize
                             |> notifier.Post
                         let update = { A.updateName = "AcceptedCommand"; A.data = dict[]}
                         TestExecution.executeAllTests updateFn (assembly)
