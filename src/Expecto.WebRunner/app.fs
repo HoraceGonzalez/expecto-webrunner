@@ -70,9 +70,6 @@ let spawnServer() =
             ]
             // json api
             withJsonHeader >=> choose [
-                GET >=> path "/discover" >=> request (fun req ->
-                    let testList = RouteHandlers.Api.discover()
-                    testList |> serialize |> OK)
                 path "/command" >=> handShake RouteHandlers.Api.command
                 GET >=> path Path.status >=> OK "up"
             ]

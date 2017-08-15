@@ -89,12 +89,19 @@ module TestExecution =
             member this.ExecuteTests() =
                 executeTests assemblyPath messageChannel.Item1
     
-    let executeAllTests (sinkFn:ExecutionStatusUpdate->unit) (assemblyPath) =
-        use host = new Remoting.TestAssemblyHost(assemblyPath)
-        let testsToInclude = Array.empty<string>
-        let messageChannel = Tuple.Create(new TestExecutionRecorderProxy({ SendMessage = sinkFn }, assemblyPath) :> IObserver<byte[]>)
-        let proxy = host.CreateInAppdomain<Proxies.ExecuteProxy>([|messageChannel; assemblyPath; testsToInclude|])
-        proxy.ExecuteTests()
+    let executeAllTests (sinkFn:ExecutionStatusUpdate->unit) (sources:string seq) =
+        sources
+        |> Seq.map (fun assemblyPath ->
+            async {
+                use host = new Remoting.TestAssemblyHost(assemblyPath)
+                let testsToInclude = Array.empty<string>
+                let messageChannel = Tuple.Create(new TestExecutionRecorderProxy({ SendMessage = sinkFn }, assemblyPath) :> IObserver<byte[]>)
+                let proxy = host.CreateInAppdomain<Proxies.ExecuteProxy>([|messageChannel; assemblyPath; testsToInclude|])
+                do proxy.ExecuteTests()
+            })
+        |> Seq.toList
+        |> Async.Parallel
+        |> Async.Ignore
 
 
 

@@ -4,22 +4,26 @@ $(function () {
     let $alert = $('#expecto-webrunner-alert');
     let $runAll = $('#run-all');
 
-    $.get("discover", function(testSet) {
-        $main.html(renderTestSet(testSet));
-        $('#expecto-webrunner .test .collapse').collapse();
-        _self.testIndex = indexTests();
-        
-    });
-
+    // start initiailize
     $runAll.click(function () {
+        $('#expecto-webrunner .test .collapse').collapse();
         $('#expecto-webrunner .test .status')
             .text('pending')
             .removeClass('hidden')
+            .removeClass('badge-success')
+            .removeClass('badge-danger')
             .addClass('badge-info');
         doSend({ commandName: "run all" });
-    })
+    });
 
     initCommandChannel('ws://localhost:8082/command');
+    // end initialize
+
+    function loadTestSet(testSet) {
+        $main.html(renderTestSet(testSet));
+        $('#expecto-webrunner .test .collapse').collapse();
+        _self.testIndex = indexTests();   
+    }
 
     function indexTests() {
         var map = {};
@@ -74,7 +78,7 @@ $(function () {
             '<div class="test card" data-test-name="',escapeTestName(testCase.testCode),'" data-assembly-path="',assemblyPath,'">',
                 '<div class="card-header" role="tab" id="',headingId,'">',
                     '<h5 class="mb-0">',
-                        '<a class="run btn btn-sm btn-primary mr-3" href="#" role="button">Run</a>',
+                        '<button class="run btn btn-sm btn-primary mr-3" href="#" type="button">Run</button>',
                         '<span class="status badge mr-3 hidden"></span>',
                         '<a class="collapsed" data-toggle="collapse" data-parent="#expecto-webrunner" href="#',collapseId,'" aria-expanded="false" aria-controls="',collapseId,'">',
                             '<small><code>',testCase.testCode,'</code></small>',
@@ -138,6 +142,7 @@ $(function () {
   
     function onOpen(evt) {
         console.log("CONNECTED");
+        doSend({ commandName: 'discover all' });
     }
   
     function onClose(evt) {
@@ -151,11 +156,17 @@ $(function () {
         console.log(message);
 
         switch (updateName.toLowerCase()) {
+            case 'testsetdiscovered':
+                loadTestSet(message.data);
+                break;
             case 'testpassed':
                 updateTestUi(message.data.name, 'PASSED', null, message.data.duration); 
                 break;
             case 'testfailed': 
                 updateTestUi(message.data.name, 'FAILED', message.data.message, message.data.duration); 
+                break;
+            case 'testignored': 
+                updateTestUi(message.data.name, 'Ignored', message.data.message); 
                 break;
             case 'teststarting': 
                 updateTestUi(message.data.name, 'Pending'); 

@@ -10,7 +10,8 @@ open Expecto.Impl
 module TestDiscovery = 
     
     type DiscoveredTestList =
-        {   assemblyName : string
+        {   assemblyPath : string
+            assemblyName : string
             testCases : DiscoveredTestCase seq }
     and DiscoveredTestCase = 
         {   testCode : string
@@ -97,24 +98,33 @@ module TestDiscovery =
                 |> discoverTests
 
     open Fake
+    open Hopac
 
     let discoverAll (projectDir:string) (filter:string option) =
         let filter' = defaultArg filter "tests/**/bin/Debug/*Tests*.exe"
         let sources = !! (projectDir @@ filter') 
         sources
-        |> Seq.map (fun assemblyPath ->
-            use host = new Remoting.TestAssemblyHost(assemblyPath)
-            let discoverProxy = host.CreateInAppdomain<Proxies.TestDiscoveryProxy>()
-            let testList = discoverProxy.DiscoverTests(assemblyPath)
-            let getSourceLocation = SourceLocation.makeSourceLocator assemblyPath
-            {   assemblyName = Fake.FileHelper.fileNameWithoutExt assemblyPath
-                testCases =
-                    testList
-                    |> Seq.map (fun tc ->
-                        let sourceLocation = getSourceLocation tc.typeName tc.methodName
-                        { tc with
-                            assemblyPath = assemblyPath
-                            codeFilePath = sourceLocation |> Option.map (fun l -> l.SourcePath)
-                            lineNumber = sourceLocation |> Option.map (fun l -> l.LineNumber) })
-                        |> Seq.toArray })
-        |> Seq.toArray
+        |> Seq.map (fun assemblyPath -> 
+            let discover = 
+                async {
+                    printfn "discovering: %s" assemblyPath
+            
+                    use host = new Remoting.TestAssemblyHost(assemblyPath)
+                    let discoverProxy = host.CreateInAppdomain<Proxies.TestDiscoveryProxy>()
+                    let testList = discoverProxy.DiscoverTests(assemblyPath)
+                    let getSourceLocation = SourceLocation.makeSourceLocator assemblyPath
+                    return
+                        {   assemblyPath = assemblyPath 
+                            assemblyName = Fake.FileHelper.fileNameWithoutExt assemblyPath
+                            testCases =
+                                testList
+                                |> Seq.map (fun tc ->
+                                    let sourceLocation = getSourceLocation tc.typeName tc.methodName
+                                    { tc with
+                                        assemblyPath = assemblyPath
+                                        codeFilePath = sourceLocation |> Option.map (fun l -> l.SourcePath)
+                                        lineNumber = sourceLocation |> Option.map (fun l -> l.LineNumber) })
+                                    |> Seq.toArray }
+                }
+            discover)
+        |> Async.Parallel

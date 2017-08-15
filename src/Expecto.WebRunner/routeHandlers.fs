@@ -4,7 +4,7 @@ open System
 
 module StaticContext = 
     open Suave
-    let assets = Files.dir "C:\code\RealtyShares.New\expecto-webrunner\src\Expecto.WebRunner.Server\assets"
+    let assets = Files.dir "assets"
 
 module Html =
     open Hopac
@@ -16,7 +16,7 @@ module Html =
     open Suave.DotLiquid
     open DotLiquid
     
-    setTemplatesDir (@"assets")
+    setTemplatesDir "assets"
 
     let indexPage = page "index.html" ()
 
@@ -29,20 +29,16 @@ module Api =
         type Command =
             {   commandName : string
                 testCode : string
-                assemblyPath : string }
+                assemblyName : string }
         type StatusUpdate =
             {   updateName : string
                 data : obj }
             
-    let discover() =
-        let projectDir = "c:/code/realtyshares.new/bizapps/"
-        let testLists = discoverAll projectDir None
-        testLists
-
     open Suave.Sockets
     open Suave.Sockets.Control
     open Suave.WebSocket
     open Expecto.WebRunner.TestExecution
+    open FSharpx.Functional.Lens
 
     let serializeToSocket o (ws:WebSocket) = 
         let msg = 
@@ -101,21 +97,66 @@ module Api =
                 "ignores" => summary.ignores
                 "passes" => summary.passes
                 "total" => summary.total ] }
-                
-    let command (webSocket : WebSocket) (context: _) =
+        
+    type WebSocketSession(ws:WebSocket) =
         let notifier = MailboxProcessor<Models.StatusUpdate>.Start(fun inbox ->
-            // Loop that waits for the agent and writes to web socket
-            let rec notifyLoop() = 
-                async { 
+            let rec loop() =
+                async {
                     let! msg = inbox.Receive()
-                    let! _ = webSocket |> serializeToSocket msg
-                    do! notifyLoop()
+                    do! ws |> serializeToSocket msg |> Async.Ignore
+                    do! loop()
                 }
-            notifyLoop())
+            loop())
+
+        let agent = MailboxProcessor<SessionMessage>.Start(fun inbox ->
+            let discoveredTestLists = System.Collections.Generic.Dictionary<string,DiscoveredTestList>()
+            // Loop that waits for the agent and writes to web socket
+            let rec loop() = 
+                async {
+                    try
+                        let! msg = inbox.Receive()
+                        match msg with
+                        | DiscoverAll ->
+                            let projectDir = "c:/code/realtyshares.new/bizapps/"
+                            let! testLists = discoverAll projectDir None 
+                            discoveredTestLists.Clear()
+                            for test in testLists do
+                                discoveredTestLists.[test.assemblyName] <- test
+                            notifier.Post { A.updateName = "TestSetDiscovered"; A.data = testLists }
+                        | Rediscover _ ->
+                            ()
+                        | ExecuteAll ->
+                            let assembly = @"C:\code\RealtyShares.New\bizapps\tests\RS.Core.Tests\bin\Debug\RS.Core.Tests.exe"
+                            let updateFn status = 
+                                status
+                                |> convertExecutionStatusUpdateToApi
+                                |> notifier.Post
+
+                            do! discoveredTestLists
+                                |> Seq.map (fun kv -> kv.Value.assemblyPath)
+                                |> TestExecution.executeAllTests updateFn
+                    with
+                    | exn -> printfn "Kablamo %A" exn
+
+                    do! loop()
+                }
+            loop())
+        member this.Notify msg = notifier.Post(msg)
+        member this.DiscoverAllAndNotify() = agent.Post(DiscoverAll)
+        member this.RediscoverAndNotify(source) = agent.Post(Rediscover source)
+        member this.ExecuteAllAndNotify() = agent.Post(ExecuteAll)
+
+    and private SessionMessage =
+        | DiscoverAll
+        | Rediscover of sourceAssembly:string
+        | ExecuteAll
+
+    let command (webSocket : WebSocket) (context: _) =
             
         let cts = new System.Threading.CancellationTokenSource()
-
         socket {
+            let session = WebSocketSession(webSocket)
+        
             // if `loop` is set to false, the server will stop receiving messages
             let mutable loop = true
 
@@ -133,23 +174,22 @@ module Api =
                 //
                 // the last element is the FIN byte, explained later
                 | (Text, data, true) ->
-                    let cmd = deserializeFromSocket<Models.Command> data
-                    match cmd with 
-                    | Success cmd when cmd.commandName = "run all" ->
-                        let assembly = @"C:\code\RealtyShares.New\bizapps\tests\RS.Core.Tests\bin\Debug\RS.Core.Tests.exe"
-                        let updateFn status = 
-                            status
-                            |> convertExecutionStatusUpdateToApi
-                            |> notifier.Post
+                    match deserializeFromSocket<Models.Command> data with 
+                    | Success cmd ->
                         let update = { A.updateName = "AcceptedCommand"; A.data = dict[]}
-                        TestExecution.executeAllTests updateFn (assembly)
-                        // the `send` function sends a message back to the client
                         do! webSocket |> serializeToSocket update
-                    | Success cmd when cmd.commandName = "run test" ->
-                        // the `send` function sends a message back to the client
-                        let update = { A.updateName = "AcceptedCommand"; A.data = dict["testCode" => cmd.testCode]}
-                        do! webSocket |> serializeToSocket update
-                    | _ ->
+                            
+                        match cmd.commandName with
+                        | "discover all" ->
+                            session.DiscoverAllAndNotify()
+                        | "run all" ->
+                            session.ExecuteAllAndNotify()
+                        | "run test" ->
+                            ()
+                        | _ ->
+                            let update = { A.updateName = "UnrecognizedCommand"; A.data = dict[]}
+                            do! webSocket |> serializeToSocket update
+                    | Failure _ ->
                         // the `send` function sends a message back to the client
                         let update = { A.updateName = "UnrecognizedCommand"; A.data = dict[]}
                         do! webSocket |> serializeToSocket update
