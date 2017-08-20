@@ -26,7 +26,7 @@ module SourceLocation =
         let enumerateTypes (assemblyPath:string) =
             let readerParams = new ReaderParameters()
             readerParams.ReadSymbols <- true 
-            //readerParams.InMemory <- true
+            readerParams.InMemory <- true
             let moduleDefinition = ModuleDefinition.ReadModule(assemblyPath, readerParams)
             moduleDefinition.GetTypes()
             |> Seq.map (fun t -> 

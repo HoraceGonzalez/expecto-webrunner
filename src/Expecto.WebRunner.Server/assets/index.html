@@ -53,12 +53,19 @@
       </button>
       <div class="collapse navbar-collapse" id="navbarText">
         <ul class="navbar-nav mr-auto">
-          <!-- <li class="nav-item">
-            <a class="nav-link" href="#">Features</a>
-          </li>
           <li class="nav-item">
-            <a class="nav-link" href="#">Pricing</a>
-          </li> -->
+            <span class="nav-link">
+              Auto-Run
+              <div class="btn-group ml-1" data-toggle="buttons">
+                <label class="btn btn-primary active">
+                  <input type="radio" name="auto-run" id="auto-run-on" value="true" autocomplete="off" checked> On
+                </label>
+                <label class="btn btn-primary">
+                  <input type="radio" name="auto-run" id="auto-run-off" value="false" autocomplete="off"> Off
+                </label>
+              </div>
+            </span>
+          </li>
         </ul>
         <span class="navbar-text">
           <button id="run-all" type="button" class="btn btn-sm btn-success">Run All</button>
@@ -66,28 +73,19 @@
       </div>
     </nav>  
 
+    <div class="console fixed-bottom navbar-light bg-light px-3 py-2" style="overflow:auto;height:100px;background-color:#f5f5f5;border-top:1px solid rgba(0,0,0,.15)">
+      <pre id="status-bar" style="line-height:1; word-wrap:break-word;overflow-y:hidden">
+    </div>  
+
     <div class="container mt-5">
-      <!--div id="expecto-webrunner-alert" class="alert alert-warning alert-dismissible fade show" role="alert">
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-        </button>
-        <strong>Holy guacamole!</strong> You should check in on some of those fields below.
-      </div-->
-      
       <!-- Example row of columns -->
       <div id="expecto-webrunner" role="tablist">
         <div class="col-md-12 mt-4">
           <h1>Discovering tests...</h1>
         </div>
       </div>
-    
-      <hr>
     </div> <!-- /container -->
     
-    <footer class="footer">
-      <p>&copy; Company 2017</p>
-    </footer>        
-  
     <script src="//ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <script>window.jQuery || document.write('<script src="js/vendor/jquery-3.2.1.min.js"><\/script>')</script>
     <script src="js/vendor/popper.min.js"></script>

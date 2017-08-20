@@ -57,6 +57,7 @@
     <Compile Include="sourcecodeinspection.fs" />
     <Compile Include="discovery.fs" />
     <Compile Include="execution.fs" />
+    <Compile Include="commands.fs" />
     <Compile Include="routeHandlers.fs" />
     <Compile Include="app.fs" />
     <None Include="paket.references" />

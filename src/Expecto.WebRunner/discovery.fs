@@ -100,6 +100,29 @@ module TestDiscovery =
     open Fake
     open Hopac
 
+    let discoverFromAssembly (assemblyPath:string) =
+        async {
+            printfn "discovering: %s" assemblyPath
+            
+            use host = new Remoting.TestAssemblyHost(assemblyPath)
+            let discoverProxy = host.CreateInAppdomain<Proxies.TestDiscoveryProxy>()
+            let testList = discoverProxy.DiscoverTests(assemblyPath)
+            //let getSourceLocation = SourceLocation.makeSourceLocator assemblyPath
+            return
+                {   assemblyPath = assemblyPath 
+                    assemblyName = Fake.FileHelper.fileNameWithoutExt assemblyPath
+                    testCases =
+                        testList
+                        |> Seq.map (fun tc ->
+                            let sourceLocation : SourceLocation option = None // getSourceLocation tc.typeName tc.methodName
+                            { tc with
+                                assemblyPath = assemblyPath
+                                codeFilePath = None //sourceLocation |> Option.map (fun l -> l.SourcePath)
+                                lineNumber = None //sourceLocation |> Option.map (fun l -> l.LineNumber) 
+                                })
+                            |> Seq.toArray }
+        }
+
     let discoverAll (projectDir:string) (filter:string option) =
         let filter' = defaultArg filter "tests/**/bin/Debug/*Tests*.exe"
         let sources = !! (projectDir @@ filter') 
@@ -112,18 +135,19 @@ module TestDiscovery =
                     use host = new Remoting.TestAssemblyHost(assemblyPath)
                     let discoverProxy = host.CreateInAppdomain<Proxies.TestDiscoveryProxy>()
                     let testList = discoverProxy.DiscoverTests(assemblyPath)
-                    let getSourceLocation = SourceLocation.makeSourceLocator assemblyPath
+                    //let getSourceLocation = SourceLocation.makeSourceLocator assemblyPath
                     return
                         {   assemblyPath = assemblyPath 
                             assemblyName = Fake.FileHelper.fileNameWithoutExt assemblyPath
                             testCases =
                                 testList
                                 |> Seq.map (fun tc ->
-                                    let sourceLocation = getSourceLocation tc.typeName tc.methodName
+                                    //let sourceLocation = getSourceLocation tc.typeName tc.methodName
                                     { tc with
                                         assemblyPath = assemblyPath
-                                        codeFilePath = sourceLocation |> Option.map (fun l -> l.SourcePath)
-                                        lineNumber = sourceLocation |> Option.map (fun l -> l.LineNumber) })
+                                        codeFilePath = None //sourceLocation |> Option.map (fun l -> l.SourcePath)
+                                        lineNumber = None //sourceLocation |> Option.map (fun l -> l.LineNumber) 
+                                        })
                                     |> Seq.toArray }
                 }
             discover)

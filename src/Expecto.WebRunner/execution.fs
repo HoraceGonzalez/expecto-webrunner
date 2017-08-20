@@ -54,9 +54,15 @@ module TestExecution =
                 binarySerializer.UnPickle<ExecutionStatusUpdate> message
                 |> recorder.SendMessage
                 
-    let executeTests(source:string) (sink:IObserver<byte[]>) = 
-        let asm = Assembly.LoadFrom(source)
-        let tests = SourceLocation.loadTestListFromAssembly asm
+    let executeTestsFromAssembly(source:string) (sink:IObserver<byte[]>) (includeTests:string seq option) = 
+        let filterTests = 
+            match includeTests with
+            | Some tests ->
+                let set = tests |> Set.ofSeq
+                fun t -> set |> Set.contains t
+            | None -> 
+                fun _ -> true
+                
         let postUpdate status = async.Return <| sink.OnNext(binarySerializer.Pickle status) 
         let testPrinters = 
             {   beforeRun = (fun test -> BeforeRun source |> postUpdate)
@@ -69,8 +75,11 @@ module TestExecution =
                 failed = (fun name message duration -> Failed(name,message,duration) |> postUpdate)
                 exn = (fun name ex duration -> Exception(name,ex,duration) |> postUpdate) 
             }
-        let conf = { defaultConfig with printer = testPrinters }
-        runTests conf tests |> ignore
+            
+        Assembly.LoadFrom(source)
+        |> SourceLocation.loadTestListFromAssembly
+        |> Expecto.Test.filter filterTests
+        |> Expecto.Tests.runTests { defaultConfig with printer = testPrinters }
         
     module Proxies = 
         // The curious 1-tuple argument here is so that we can force the AppDomain class to locate the correct
@@ -87,17 +96,31 @@ module TestExecution =
         type ExecuteProxy(messageChannel: Tuple<IObserver<byte[]>>, assemblyPath: string, testsToInclude: string[]) =
             inherit Remoting.MarshalByRefObjectInfiniteLease()
             member this.ExecuteTests() =
-                executeTests assemblyPath messageChannel.Item1
+                let tests = 
+                    match testsToInclude with
+                    | [||] -> None
+                    | _ -> Some (Seq.ofArray testsToInclude)
+                executeTestsFromAssembly assemblyPath messageChannel.Item1 tests
     
-    let executeAllTests (sinkFn:ExecutionStatusUpdate->unit) (sources:string seq) =
+    type TestSource = 
+        {   assemblyPath : string
+            testCode : string }
+
+    let executeTests (sinkFn:ExecutionStatusUpdate->unit) (sources:TestSource seq) =
         sources
-        |> Seq.map (fun assemblyPath ->
+        |> Seq.groupBy (fun s -> s.assemblyPath)
+        |> Seq.map (fun (assemblyPath,sources) ->
+            let testsToInclude = 
+                sources 
+                |> Seq.map (fun s -> s.testCode)
+                |> Seq.toArray
+            assemblyPath,testsToInclude)
+        |> Seq.map (fun (assemblyPath,testsToInclude) ->
             async {
                 use host = new Remoting.TestAssemblyHost(assemblyPath)
-                let testsToInclude = Array.empty<string>
                 let messageChannel = Tuple.Create(new TestExecutionRecorderProxy({ SendMessage = sinkFn }, assemblyPath) :> IObserver<byte[]>)
                 let proxy = host.CreateInAppdomain<Proxies.ExecuteProxy>([|messageChannel; assemblyPath; testsToInclude|])
-                do proxy.ExecuteTests()
+                do (proxy.ExecuteTests() |> ignore)
             })
         |> Seq.toList
         |> Async.Parallel
