@@ -12,72 +12,34 @@
         <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
         <link rel="stylesheet" href="css/bootstrap.min.css">
-
-        <style>
-            body {
-                padding-top: 50px;
-                padding-bottom: 20px;
-            }
-
-            /* Sticky footer styles
-            -------------------------------------------------- */
-            html {
-              position: relative;
-              min-height: 100%;
-            }
-            body {
-              /* Margin bottom by footer height */
-              margin-bottom: 60px;
-            }
-            .footer {
-              position: absolute;
-              bottom: 0;
-              width: 100%;
-              /* Set the fixed height of the footer here */
-              height: 60px;
-              line-height: 60px; /* Vertically center the text there */
-              background-color: #f5f5f5;
-            }
-        </style>
+        <link rel="stylesheet" href="css/main.css">
         
-        <!-- <link rel="stylesheet" href="css/bootstrap-theme.min.css">
-        <link rel="stylesheet" href="css/main.css"> -->
-
         <script src="js/vendor/modernizr-2.8.3-respond-1.4.2.min.js"></script>
     </head>
     <body>
 
     <nav class="navbar navbar-expand-lg fixed-top navbar-dark bg-dark">
-      <button class="navbar-brand navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarText" aria-controls="navbarText" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarText">
-        <ul class="navbar-nav mr-auto">
-          <li class="nav-item">
-            <span class="nav-link">
-              Auto-Run
-              <div class="btn-group ml-1" data-toggle="buttons">
-                <label class="btn btn-primary active">
-                  <input type="radio" name="auto-run" id="auto-run-on" value="true" autocomplete="off" checked> On
-                </label>
-                <label class="btn btn-primary">
-                  <input type="radio" name="auto-run" id="auto-run-off" value="false" autocomplete="off"> Off
-                </label>
-              </div>
-            </span>
-          </li>
-        </ul>
-        <span class="navbar-text">
-          <button id="run-all" type="button" class="btn btn-sm btn-success">Run All</button>
-        </span>
-      </div>
+      <ul class="navbar-nav mr-auto">
+        <li class="nav-item">
+          <span class="nav-link">
+            Auto-Run
+            <div class="btn-group ml-1" data-toggle="buttons">
+              <label class="btn btn-primary active">
+                <input type="radio" name="auto-run" id="auto-run-on" value="true" autocomplete="off" checked> On
+              </label>
+              <label class="btn btn-primary">
+                <input type="radio" name="auto-run" id="auto-run-off" value="false" autocomplete="off"> Off
+              </label>
+            </div>
+          </span>
+        </li>
+      </ul>
+      <span class="navbar-text">
+        <button id="run-all" type="button" class="btn btn-sm btn-success">Run All</button>
+      </span>
     </nav>  
 
-    <div class="console fixed-bottom navbar-light bg-light px-3 py-2" style="overflow:auto;height:100px;background-color:#f5f5f5;border-top:1px solid rgba(0,0,0,.15)">
-      <pre id="status-bar" style="line-height:1; word-wrap:break-word;overflow-y:hidden">
-    </div>  
-
-    <div class="container mt-5">
+    <div class="mt-5 mx-4">
       <!-- Example row of columns -->
       <div id="expecto-webrunner" role="tablist">
         <div class="col-md-12 mt-4">
@@ -86,6 +48,10 @@
       </div>
     </div> <!-- /container -->
     
+    <div class="console fixed-bottom navbar-light bg-light px-3 py-1">
+      <pre id="status-bar" />
+    </div>  
+
     <script src="//ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <script>window.jQuery || document.write('<script src="js/vendor/jquery-3.2.1.min.js"><\/script>')</script>
     <script src="js/vendor/popper.min.js"></script>

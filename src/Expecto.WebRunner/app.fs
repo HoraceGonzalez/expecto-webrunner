@@ -78,4 +78,7 @@ let spawnServer(projectDir:string) (assemblyFilter:string) =
         ]
     let _listenting, server = Web.startWebServerAsync suaveConfig app
     Async.Start(server, cancel.Token)
+
+    printfn "Watching folder: %s" projectDir
+    printfn "With test assembly filter: %s" assemblyFilter
     { new IDisposable with member this.Dispose() = cancel.Cancel() }

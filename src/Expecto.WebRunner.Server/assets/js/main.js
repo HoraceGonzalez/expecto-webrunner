@@ -83,7 +83,7 @@ $(function () {
         let assemblyNameFormatted = testList.assemblyName.replace('"','\"');
         return [
             '<div id="testlist-name-', assemblyNameFormatted, '">',
-            '<h3 class="py-3">',testList.assemblyName,'</h3>',
+            '<h5 class="py-3">',testList.assemblyName,'</h3>',
             $.map(testList.testCases,function (testCase) {
                 return renderTestCase(testList.assemblyName, testCase)
             }).join('\n'),
@@ -102,17 +102,15 @@ $(function () {
         let collapseId = ['collapse-',testCode].join('');
         return [
             '<div class="test card" data-test-name="',escapeTestName(testCase.testCode),'" data-assembly-name="',assemblyNameFormatted,'">',
-                '<div class="card-header" role="tab" id="',headingId,'">',
-                    '<h5 class="mb-0">',
-                        '<button class="run btn btn-sm btn-primary mr-3" href="#" type="button">Run</button>',
-                        '<span class="status badge mr-3 hidden"></span>',
-                        '<a class="collapsed" data-toggle="collapse" data-parent="#expecto-webrunner" href="#',collapseId,'" aria-expanded="false" aria-controls="',collapseId,'">',
-                            '<small><code>',testCase.testCode,'</code></small>',
-                        '</a>',
-                    '</h5>',
+                '<div class="card-header p-0" role="tab" id="',headingId,'">',
+                    '<button class="run btn btn-sm btn-primary mr-2" href="#" type="button">Run</button>',
+                    '<span class="status badge mr-0 hidden"></span>',
+                    '<a class="collapsed" data-toggle="collapse" data-parent="#expecto-webrunner" href="#',collapseId,'" aria-expanded="false" aria-controls="',collapseId,'">',
+                        '<small><code>',testCase.testCode,'</code></small>',
+                    '</a>',
                 '</div>',
                 '<div id="',collapseId,'" class="message-dropdown collapse show" role="tabpanel" aria-labelledby="',headingId,'" data-parent="#accordion">',
-                    '<div class="message card-body"></div>',
+                    '<div class="message card-body p-3"></div>',
                 '</div>',
             '</div>'
         ].join('');
@@ -133,11 +131,11 @@ $(function () {
         }
     
         var durationMarkup = duration != null
-            ? ['<p><pre>Duration: ',duration,'</pre></p>'].join('')
+            ? ['<pre>Duration: ',duration,'</pre>'].join('')
             : '';
 
         var descriptionMarkup = description != null
-            ? ['<p><pre>',description,'</pre></p>'].join('')
+            ? ['<pre>',description,'</pre>'].join('')
             : '';
 
         test.$message.html([
@@ -153,9 +151,6 @@ $(function () {
 
     function alertAppStatus(message) {
         console.log(message);
-        //var pre = document.createElement("p");
-        //pre.style.wordWrap = "break-word";
-        //pre.innerHTML = message;
         $statusBar.append('\n' + message);
 
         $statusBar.parent().scrollTop($statusBar.height());
