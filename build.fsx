@@ -35,10 +35,12 @@ let summary = "A web-based test runner for expecto"
 
 // Longer description of the project
 // (used as a description for NuGet package; line breaks are automatically cleaned up)
-let description = ""
+let description = summary
 
 // List of author names (for NuGet package)
 let authors = [ "Horace Gonzalez" ]
+
+let tags = "expecto test runner"
 
 // File system information
 let solutionFile  = "Expecto.WebRunner.sln"
@@ -56,6 +58,15 @@ let gitName = "expecto-webrunner"
 
 // The url for the raw files hosted
 let gitRaw = environVarOrDefault "gitRaw" "https://raw.github.com/RealtyShares"
+
+// Read release notes & version info from RELEASE_NOTES.md
+let release = 
+    File.ReadLines "RELEASE_NOTES.md" 
+    |> ReleaseNotesHelper.parseReleaseNotes
+
+let buildDir = "./bin/"
+
+let nugetDir = "./nuget/"
 
 // Disable writing to default Fake.Errors.txt files, which causes resource contention while multiple jenkins processes are running
 MSBuildLoggers <- []
@@ -140,16 +151,14 @@ Target "Restore" (fun _ ->
 // src folder to support multiple project outputs
 Target "CopyBinaries" (fun _ ->
     !! "src/**/*.??proj"
-    |>  Seq.map (fun f -> ((System.IO.Path.GetDirectoryName f) @@ "bin/Release", "bin" @@ (System.IO.Path.GetFileNameWithoutExtension f)))
+    |>  Seq.map (fun f -> ((System.IO.Path.GetDirectoryName f) @@ "bin/Release", buildDir @@ (System.IO.Path.GetFileNameWithoutExtension f)))
     |>  Seq.iter (fun (fromDir, toDir) -> CopyDir toDir fromDir (fun _ -> true))
 )
 
 // Copy assets
 Target "CopyAssets" (fun _ ->
-    !! "src/**/templates"
-    ++ "src/**/scripts"
-    ++ "src/**/images"
-    |> Seq.map (fun f -> (System.IO.Path.GetFullPath f), (System.IO.Path.GetFileName f))
+    !! "src/**/assets"
+    |> Seq.map (fun f -> (System.IO.Path.GetFullPath f), buildDir @@ (System.IO.Path.GetFileName f))
     |> Seq.iter (fun (fromDir, toDir) -> CopyDir toDir fromDir (fun _ -> true))
 )
 
@@ -170,7 +179,7 @@ let cleanBuildArtifacts() =
     |> CleanDirs
 
 Target "Clean" (fun _ ->
-    CleanDirs ["bin"; "temp"]
+    CleanDirs [buildDir; "temp"]
 )
 
 Target "CleanBuildArtifacts" cleanBuildArtifacts
@@ -231,6 +240,36 @@ Target "RunTests" (fun _ ->
 )
 
 // --------------------------------------------------------------------------------------
+// Build a NuGet package
+
+Target "NuGet" (fun () ->
+    let nugetToolsDir = nugetDir @@ "tools"
+    let nugetLibDir = nugetDir @@ "lib"
+    let nugetLib451Dir = nugetLibDir @@ "net461"
+
+    CleanDir nugetToolsDir
+    CleanDir nugetLibDir
+    DeleteDir nugetLibDir
+
+    !! (buildDir @@ "**/*.*") |> Copy nugetToolsDir
+        
+    let setParams p =
+        {p with
+            Authors = authors
+            Project = project
+            Description = description
+            Version = release.NugetVersion
+            OutputPath = nugetDir
+            WorkingDir = nugetDir
+            Summary = summary
+            ReleaseNotes = release.Notes |> toLines
+            Tags = tags
+            Dependencies = p.Dependencies
+            Publish = false }
+
+    NuGet setParams (sprintf "%s.nuspec" project))
+   
+// --------------------------------------------------------------------------------------
 // Run all targets by default. Invoke 'build <Target>' to override
 
 Target "All" DoNothing
@@ -248,5 +287,8 @@ Target "All" DoNothing
   ==> "CopyBinaries"
   ==> "RunTests"
   ==> "All"
+
+"CopyBinaries"
+ ==> "NuGet"
 
 RunTargetOrDefault "All"

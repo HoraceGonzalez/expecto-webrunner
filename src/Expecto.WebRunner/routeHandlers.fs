@@ -51,12 +51,12 @@ module Api =
             interface IDisposable with
                 member this.Dispose() = (agent :> IDisposable).Dispose()
             
-    let command (projectDir:string) (webSocket : WebSocket) =
+    let command (projectDir:string) (assemblyFilter:string) (webSocket : WebSocket) =
             
         let cts = new System.Threading.CancellationTokenSource()
         socket {
             use notifier = new SocketReplyChannel(webSocket)
-            use session = new CommandHandler(projectDir,notifier.Reply)
+            use session = new CommandHandler(projectDir,assemblyFilter,notifier.Reply)
         
             // if `loop` is set to false, the server will stop receiving messages
             let mutable loop = true

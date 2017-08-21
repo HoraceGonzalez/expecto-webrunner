@@ -123,9 +123,8 @@ module TestDiscovery =
                             |> Seq.toArray }
         }
 
-    let discoverAll (projectDir:string) (filter:string option) =
-        let filter' = defaultArg filter "tests/**/bin/Debug/*Tests*.exe"
-        let sources = !! (projectDir @@ filter') 
+    let discoverAll (projectDir:string) (filter:string) =
+        let sources = !! (projectDir @@ filter) 
         sources
         |> Seq.map (fun assemblyPath -> 
             let discover = 

@@ -43,7 +43,7 @@ module private _Implementation =
                 bindings = bindings
                 maxContentLength = maxContentLengthBytes } 
 
-let spawnServer(projectDir:string) =
+let spawnServer(projectDir:string) (assemblyFilter:string) =
     let cancel = new Threading.CancellationTokenSource()                                                                 //TODO Test 6
         
     let suaveConfig = 
@@ -70,7 +70,7 @@ let spawnServer(projectDir:string) =
             ]
             // json api
             withJsonHeader >=> choose [
-                path "/command" >=> handShake (fun ws _ -> RouteHandlers.Api.command projectDir ws)
+                path "/command" >=> handShake (fun ws _ -> RouteHandlers.Api.command projectDir assemblyFilter ws)
                 GET >=> path Path.status >=> OK "up"
             ]
             browseHome

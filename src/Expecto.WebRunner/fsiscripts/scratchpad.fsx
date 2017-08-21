@@ -10,8 +10,8 @@ open Fake.Testing.Expecto
 
 let projectDir = "c:/code/realtyshares.new/bizapps"
 
-
-let testAssemblies = projectDir @@ "tests/**/bin/Debug/*Tests*.exe"
+let filter = "tests/**/bin/Debug/*Tests*.exe"
+let testAssemblies = projectDir @@ filter
 
 !! testAssemblies 
 |>  Seq.map (fun f -> f)

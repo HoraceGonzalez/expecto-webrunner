@@ -103,7 +103,7 @@ module CommandHandler =
             | ExecuteAll
             | ExecuteSelected of tests:SelectedTest list
 
-    type CommandHandler(projectDir:string,notify:Models.StatusUpdate->unit) =
+    type CommandHandler(projectDir:string,assemblyFilter:string,notify:Models.StatusUpdate->unit) =
         let agent = MailboxProcessor<CommandType>.Start(fun inbox ->
             let discoveredTestLists = ref (new LoadedTestSet())
             let rediscover (args:FileSystemEventArgs) = 
@@ -122,7 +122,7 @@ module CommandHandler =
                         let! msg = inbox.Receive()
                         match msg with
                         | DiscoverAll ->
-                            let! testLists = discoverAll projectDir None 
+                            let! testLists = discoverAll projectDir assemblyFilter 
                             (!discoveredTestLists :> IDisposable).Dispose()
                             discoveredTestLists := new LoadedTestSet()
                             for test in testLists do
