@@ -3,5 +3,5 @@
 !.gitignore
 
 # Ignore everything:
-!nuget/
-!nuget/*.nupkg
+!source/
+!source/*.nupkg
