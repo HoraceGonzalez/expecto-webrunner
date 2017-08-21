@@ -246,12 +246,17 @@ Target "NuGet" (fun () ->
     let nugetToolsDir = nugetDir @@ "tools"
     let nugetLibDir = nugetDir @@ "lib"
     let nugetLib451Dir = nugetLibDir @@ "net461"
+    let nugetAssetsDir = nugetToolsDir @@ "assets"
 
     CleanDir nugetToolsDir
     CleanDir nugetLibDir
     DeleteDir nugetLibDir
 
-    !! (buildDir @@ "**/*.*") |> Copy nugetToolsDir
+    !! (buildDir @@ "**/*.*") 
+    -- (buildDir @@ "assets/**/*.*")
+    |> Copy nugetToolsDir
+
+    CopyDir nugetAssetsDir (buildDir @@ "assets") (fun _ -> true)
         
     let setParams p =
         {p with
