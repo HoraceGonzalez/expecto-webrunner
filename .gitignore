@@ -1,0 +1,7 @@
+# Except for nuget packages
+*
+!.gitignore
+
+# Ignore everything:
+!nuget/
+!nuget/*.nupkg
